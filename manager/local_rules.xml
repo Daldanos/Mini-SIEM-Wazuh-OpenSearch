@@ -1,1 +1,18 @@
+<group name="local,sysmon,windows,">
 
+  <rule id="100001" level="10" frequency="5" timeframe="60">
+    <if_sid>60122</if_sid>
+    <field name="win.system.eventID">^4625$</field>
+    <description>Mini-SIEM: RDP Brute Force Attack Detected (5 attempts)</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+  </rule>
+
+  <rule id="100002" level="0">
+    <if_sid>60602</if_sid>
+    <field name="win.system.message" type="pcre2">AAGS-AppWebService</field>
+    <description>Noise suppression: Silence AAGS socket errors</description>
+  </rule>
+
+</group>
