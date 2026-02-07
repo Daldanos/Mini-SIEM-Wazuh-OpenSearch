@@ -293,3 +293,98 @@ netsh advfirewall firewall add rule name="WAZUH_PANIC_ICMP" dir=in action=block 
 :: To isolate the machine COMPLETELY from any inbound traffic, 
 :: uncomment the following line:
 :: netsh advfirewall set allprofiles firewallpolicy blockinbound,allowoutbound
+```
+
+# Integrations & Testing
+
+## 4.1 Real-Time Alerting (Discord Integration)
+To bridge the gap between detection and response, we implemented a real-time notification system using **Discord Webhooks**. This ensures that critical security events are delivered to the analyst's mobile or desktop instantly.
+
+### Implementation Steps:
+1.  **Discord Side:** Create a dedicated server and channel. Navigate to `Channel Settings > Integrations > Webhooks` and copy the **Webhook URL**.
+2.  **Manager Side:** Modify the global configuration on the Debian server (`/var/ossec/etc/ossec.conf`).
+
+### Configuration Snippet:
+```xml
+<ossec_config>
+  <integration>
+    <name>custom-discord</name>
+    <hook_url>[https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_TOKEN](https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_TOKEN)</hook_url>
+    <level>10</level> <alert_format>json</alert_format>
+  </integration>
+</ossec_config>
+```
+
+### Integration Logic:
+By setting the `<level>` to **10**, we filter out operational noise and focus exclusively on high-impact events. This prevents "alert fatigue" by ensuring that the Discord channel only notifies the team during actual security incidents, such as successful brute force detections or malware findings.
+
+## 4.2 Malware Detection via VirusTotal
+To enhance detection beyond signature-based rules, we integrated the **VirusTotal API**. This allows Wazuh to automatically scan file hashes whenever a new file is created or modified on the endpoint.
+
+### The EICAR Test
+We simulated a malware infection by creating a test file with the industry-standard **EICAR** string.
+
+1.  **Test File:** `virustotal.txt`
+2.  **Execution:** The file was saved on the Windows 7 Desktop.
+3.  **Wazuh Response:** * The **Syscheck** (FIM) module detected the file creation.
+    * The file hash was sent to VirusTotal via the Manager.
+    * A high-severity alert was generated in the dashboard, identifying the file as malicious.
+    * **Result:** A real-time notification was successfully sent to the Discord channel.
+
+```json
+/* Sample Alert Data */
+"rule": {
+  "description": "VirusTotal: Alert - virustotal.txt - Malicious file detected",
+  "level": 12
+}
+```
+
+## 4.3 Validation of the GIR Lockdown
+The effectiveness of the **Global Isolation Response (GIR)** was validated through a controlled attack simulation. This confirmed that even without capturing the attacker's Source IP, the machine can defend itself.
+
+### The Simulation Process:
+1.  **Baseline Connectivity:** A continuous ping (`ping -t`) was established from the Host (192.168.56.1) to the Windows 7 Agent.
+2.  **Attack Execution:** Multiple failed RDP login attempts were performed to trigger Rule 100001.
+3.  **Autonomous Response:** Upon reaching 5 failures in 60 seconds, the Manager commanded the Agent to execute `lockdown.bat`.
+
+### The Evidence:
+* **Instant Network Isolation:** The `ping -t` command immediately switched from successful replies to **"Request timed out"**.
+* **Attack Vector Neutralized:** The RDP client on the host machine was unable to continue the attack as the port was blocked at the firewall level.
+* **Visual Confirmation:** In the Wazuh Dashboard, the alert for "Active Response: lockdown.bat" appeared milliseconds after the brute force threshold was met.
+
+## 4.4 Recovery Procedure
+Because the **GIR** protocol implements a permanent block (to prevent the attacker from simply waiting for a timeout), a manual recovery procedure is documented.
+
+* **Script:** `reset-demo.bat` (available in the `/src/scripts/` folder).
+* **Action:** This script flushes the custom `WAZUH_PANIC_` rules from the Windows Firewall.
+* **Usage:** Intended for administrative use only once the incident has been analyzed and the threat neutralized.
+
+```batch
+:: Example of reset command
+netsh advfirewall firewall delete rule name="WAZUH_PANIC_RDP"
+netsh advfirewall firewall delete rule name="WAZUH_PANIC_ICMP"
+```
+
+# Conclusions & Future Work
+
+## 5.1 Project Reflections
+The completion of this Mini-SIEM confirms that the true value of a security architecture lies in the **intelligence of the orchestration** rather than the specific age or type of the endpoints being monitored.
+
+### The Power of Wazuh
+The primary takeaway is the **versatility and efficiency of Wazuh** as a unified security platform. It has proven to be a robust, high-performance solution capable of:
+* **Detection:** Correlating complex events across different log sources.
+* **Blocking:** Executing immediate, automated responses to stop attacks in progress.
+* **Reporting:** Providing clear, actionable visibility of the threat landscape.
+
+This project demonstrates that a well-configured open-source stack can provide "Zero-Trust" level defense and real-time incident response that rivals premium EDR/SIEM solutions.
+
+## 5.2 Future Work & Recommendations
+To build upon this foundation, the following enhancements are recommended for a production-ready environment:
+
+* **Infrastructure Hardening:** Implementing full-disk encryption and automated backup routines for the Indexer's data.
+* **Scalability Testing:** Expanding the lab to a multi-node manager cluster to evaluate performance under high EPS (Events Per Second) loads.
+* **Advanced Automation:** Refining the **GIR Protocol** to include a self-healing timer (e.g., automatic rule expiration after X hours) to streamline recovery operations.
+* **Continuous Tuning:** Establishing a 30-day review cycle for XML rules and decoders to minimize false positives and adapt to evolving threat patterns.
+
+### Final Thoughts
+This Mini-SIEM is a testament to the fact that with the right tools—specifically Wazuh—and a DevOps approach to security, it is possible to build a highly functional, automated, and professional defense system at zero cost.
