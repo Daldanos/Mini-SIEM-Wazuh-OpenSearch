@@ -59,12 +59,12 @@ The lab runs on high-performance hardware to ensure low latency for log indexing
 
 ## 1.6 Key Innovations
 
-### 🛡️ GIR (Global Isolation Response)
+### GIR (Global Isolation Response)
 A custom script developed specifically for this lab to overcome Windows 7 logging limitations (missing Source IP in logs).
 * **Function:** It does not block a specific IP; it isolates the *entire* machine.
 * **Capability:** The script includes commented logic to block specific high-risk ports (SMB/445, RDP/3389) or enforce a "Total Blackout" (Block All).
 
-### 🌍 Log Injection for GeoIP
+### Log Injection for GeoIP
 To validate the **Geo-IP Enrichment** module within a private Host-Only network, we implemented a Log Injection strategy.
 * **Technique:** Using `logger` on the Debian server to inject simulated SSH failure logs containing public IPs from China, Russia, and Brazil.
 * **Result:** Validated the Threat Hunting map visualization without exposing the lab to the public internet.
