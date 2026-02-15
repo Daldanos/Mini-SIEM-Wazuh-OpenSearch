@@ -9,10 +9,4 @@
     </mitre>
   </rule>
 
-  <rule id="100002" level="0">
-    <if_sid>60602</if_sid>
-    <field name="win.system.message" type="pcre2">AAGS-AppWebService</field>
-    <description>Noise suppression: Silence AAGS socket errors</description>
-  </rule>
-
 </group>
